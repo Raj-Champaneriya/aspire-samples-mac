@@ -25,7 +25,7 @@ properties:
         value: '{{ securedParameter "catalog_password" }}'
   template:
     volumes:
-      - name: catalog-aspireshopapphost-catalog-data
+      - name: catalog-catalog-data
         storageType: AzureFile
         storageName: {{ .Env.SERVICE_CATALOG_VOLUME_ASPIRESHOPAPPHOST_CATALOG_DATA_NAME }} 
     containers:
@@ -43,7 +43,7 @@ properties:
           - name: POSTGRES_PASSWORD
             secretRef: postgres-password
         volumeMounts:
-          - volumeName: catalog-aspireshopapphost-catalog-data
+          - volumeName: catalog-catalog-data
             mountPath: /var/lib/postgresql/data
     scale:
       minReplicas: 1

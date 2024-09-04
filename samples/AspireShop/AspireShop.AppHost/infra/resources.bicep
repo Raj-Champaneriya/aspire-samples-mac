@@ -78,7 +78,7 @@ resource basketcacheAspireShopAppHostBasketcacheDataFileShare 'Microsoft.Storage
 }
 resource catalogAspireShopAppHostCatalogDataFileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-05-01' = {
   parent: storageVolumeFileService
-  name: take('${toLower('catalog')}-${toLower('AspireShopAppHost-catalog-data')}', 32)
+  name: take('${toLower('catalog')}-${toLower('catalog-data')}', 32)
   properties: {
     shareQuota: 1024
     enabledProtocols: 'SMB'
@@ -144,10 +144,10 @@ resource basketcacheAspireShopAppHostBasketcacheDataStore 'Microsoft.App/managed
 
 resource catalogAspireShopAppHostCatalogDataStore 'Microsoft.App/managedEnvironments/storages@2023-05-01' = {
   parent: containerAppEnvironment
-  name: take('${toLower('catalog')}-${toLower('AspireShopAppHost-catalog-data')}', 32)
+  name: take('${toLower('catalog')}-${toLower('catalog-data')}', 32)
   properties: {
     azureFile: {
-      shareName: '${toLower('catalog')}-${toLower('AspireShopAppHost-catalog-data')}'
+      shareName: '${toLower('catalog')}-${toLower('catalog-data')}'
       accountName: storageVolume.name
       accountKey: storageVolume.listKeys().keys[0].value
       accessMode: 'ReadWrite'
