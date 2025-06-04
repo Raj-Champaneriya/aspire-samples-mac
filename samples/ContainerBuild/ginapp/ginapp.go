@@ -5,11 +5,25 @@ import (
     "fmt"
     "os"
     "strconv"
+    "strings"
 )
 
 func main() {
     // Create a Gin router with default middleware: logger and recovery (crash-free) middleware
     router := gin.Default()
+
+    // Configure trusted proxies
+    trustedProxies := os.Getenv("TRUSTED_PROXIES")
+    if trustedProxies == "all" {
+        // Trust all networks (default, no method call required)
+    } else if trustedProxies != "" {
+        // Trust specific networks
+        proxies := strings.Split(trustedProxies, ";")
+        router.SetTrustedProxies(proxies)
+    } else {
+        // Disable trusted proxies
+        router.SetTrustedProxies(nil)
+    }
 
     // Define a route that listens to GET requests on /helloworld
     router.GET("/", func(c *gin.Context) {
@@ -19,18 +33,19 @@ func main() {
     })
 
     portVar := os.Getenv("PORT")
-	if portVar == "" {
-		fmt.Println("Environment variable PORT is not set.")
-		return
-	}
+    if portVar == "" {
+        fmt.Println("Environment variable PORT is not set.")
+        return
+    }
 
     port, err := strconv.Atoi(portVar)
-	if err != nil {
-		fmt.Printf("Error converting PORT to integer: %s\n", err)
-		return
-	}
+    if err != nil {
+        fmt.Printf("Error converting PORT to integer: %s\n", err)
+        return
+    }
 
     endpoint := fmt.Sprintf(":%d", port);
-    // Start the server on port 5555
+
+    // Start the server
     router.Run(endpoint)
 }

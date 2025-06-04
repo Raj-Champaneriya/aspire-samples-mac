@@ -11,6 +11,9 @@ namespace Microsoft.Extensions.Hosting;
 
 public static class Extensions
 {
+    private const string HealthEndpointPath = "/health";
+    private const string AlivenessEndpointPath = "/alive";
+
     public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
     {
         builder.ConfigureOpenTelemetry();
@@ -48,8 +51,15 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddAspNetCoreInstrumentation()
-                       .AddHttpClientInstrumentation();
+                tracing
+                    .AddSource(builder.Environment.ApplicationName)
+                    .AddAspNetCoreInstrumentation(tracing =>
+                        // Don't trace requests to the health endpoint to avoid filling the dashboard with noise
+                        tracing.Filter = httpContext =>
+                            !(httpContext.Request.Path.StartsWithSegments(HealthEndpointPath)
+                              || httpContext.Request.Path.StartsWithSegments(AlivenessEndpointPath))
+                    )
+                    .AddHttpClientInstrumentation();
             });
 
         builder.AddOpenTelemetryExporters();
@@ -66,11 +76,6 @@ public static class Extensions
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        // The following lines enable the Prometheus exporter (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
-        builder.Services.AddOpenTelemetry()
-            // BUG: Part of the workaround for https://github.com/open-telemetry/opentelemetry-dotnet-contrib/issues/1617
-           .WithMetrics(metrics => metrics.AddPrometheusExporter(options => options.DisableTotalNameSuffixForCounters = true));
-
         return builder;
     }
 
@@ -85,18 +90,15 @@ public static class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // The following line enables the Prometheus endpoint (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
-        app.MapPrometheusScrapingEndpoint();
-
         // Adding health checks endpoints to applications in non-development environments has security implications.
         // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
         if (app.Environment.IsDevelopment())
         {
             // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks("/health");
+            app.MapHealthChecks(HealthEndpointPath);
 
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks("/alive", new HealthCheckOptions
+            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
             {
                 Predicate = r => r.Tags.Contains("live")
             });

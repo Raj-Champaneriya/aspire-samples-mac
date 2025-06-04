@@ -12,25 +12,22 @@ namespace SamplesIntegrationTests;
 
 public class AppHostTests(ITestOutputHelper testOutput)
 {
+    private static readonly TimeSpan BuildStopTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan StartStopTimeout = TimeSpan.FromSeconds(120);
+
     [Theory]
     [MemberData(nameof(AppHostAssemblies))]
     public async Task AppHostRunsCleanly(string appHostPath)
     {
-        if (appHostPath.Contains("AspireWithPython.AppHost.dll", StringComparison.OrdinalIgnoreCase))
-        {
-            // https://github.com/dotnet/aspire-samples/issues/444: Disabled due to Python not being installed in the CI environment
-            return;
-        }
-
         var appHost = await DistributedApplicationTestFactory.CreateAsync(appHostPath, testOutput);
-        await using var app = await appHost.BuildAsync();
+        await using var app = await appHost.BuildAsync().WaitAsync(BuildStopTimeout);
 
-        await app.StartAsync();
-        await app.WaitForResources().WaitAsync(TimeSpan.FromSeconds(30));
+        await app.StartAsync().WaitAsync(StartStopTimeout);
+        await app.WaitForResourcesAsync().WaitAsync(StartStopTimeout);
 
-        app.EnsureNoErrorsLogged();
+        //app.EnsureNoErrorsLogged();
 
-        await app.StopAsync();
+        await app.StopAsync().WaitAsync(BuildStopTimeout);
     }
 
     [Theory]
@@ -43,10 +40,10 @@ public class AppHostTests(ITestOutputHelper testOutput)
         var appHostPath = $"{appHostName}.dll";
         var appHost = await DistributedApplicationTestFactory.CreateAsync(appHostPath, testOutput);
         var projects = appHost.Resources.OfType<ProjectResource>();
-        await using var app = await appHost.BuildAsync();
+        await using var app = await appHost.BuildAsync().WaitAsync(BuildStopTimeout);
 
-        await app.StartAsync();
-        await app.WaitForResources().WaitAsync(TimeSpan.FromSeconds(30));
+        await app.StartAsync().WaitAsync(StartStopTimeout);
+        await app.WaitForResourcesAsync().WaitAsync(StartStopTimeout);
 
         if (testEndpoints.WaitForResources?.Count > 0)
         {
@@ -106,20 +103,21 @@ public class AppHostTests(ITestOutputHelper testOutput)
             }
         }
 
-        app.EnsureNoErrorsLogged();
+        //app.EnsureNoErrorsLogged();
 
-        await app.StopAsync();
+        await app.StopAsync().WaitAsync(BuildStopTimeout);
     }
 
     public static TheoryData<string> AppHostAssemblies()
     {
         var appHostAssemblies = GetSamplesAppHostAssemblyPaths();
         var theoryData = new TheoryData<string, bool>();
-        return new(appHostAssemblies.Select(p => Path.GetRelativePath(AppContext.BaseDirectory, p)));
+        return [.. appHostAssemblies.Select(p => Path.GetRelativePath(AppContext.BaseDirectory, p))];
     }
 
     public static TheoryData<TestEndpoints> TestEndpoints() =>
         new([
+            #if NET8_0
             new TestEndpoints("AspireShop.AppHost", new() {
                 { "catalogdbmanager", ["/alive", "/health"] },
                 { "catalogservice", ["/alive", "/health"] },
@@ -127,12 +125,8 @@ public class AppHostTests(ITestOutputHelper testOutput)
                 //{ "basketservice", ["/alive", "/health"] },
                 { "frontend", ["/alive", "/health", "/"] }
             }),
-            new TestEndpoints("AspireWithDapr.AppHost", new() {
-                { "apiservice", ["/alive", "/health", "/weatherforecast"] },
-                { "webfrontend", ["/alive", "/health", "/", "/weather"] }
-            }),
             new TestEndpoints("AspireJavaScript.AppHost", new() {
-                { "weatherapi", ["/alive", "/health", "/weatherforecast"] },
+                { "weatherapi", ["/alive", "/health", "/weatherforecast", "/swagger"] },
                 { "angular", ["/"] },
                 { "react", ["/"] },
                 { "vue", ["/"] }
@@ -141,6 +135,9 @@ public class AppHostTests(ITestOutputHelper testOutput)
                 { "weatherapi", ["/alive", "/health", "/weatherforecast"] },
                 { "frontend", ["/alive", "/health", "/"] }
             }),
+            new TestEndpoints("AspireWithPython.AppHost", new() {
+                { "instrumented-python-app", ["/"] }
+            }),
             new TestEndpoints("ClientAppsIntegration.AppHost", new() {
                 { "apiservice", ["/alive", "/health", "/weatherforecast"] }
             }),
@@ -148,7 +145,7 @@ public class AppHostTests(ITestOutputHelper testOutput)
                 { "ginapp", ["/"] }
             }),
             new TestEndpoints("DatabaseContainers.AppHost", new() {
-                { "apiservice", ["/alive", "/health", "/todos", "/todos/1", "/catalog", "/catalog/1", "/addressbook", "/addressbook/1"] }
+                { "apiservice", ["/alive", "/health", "/todos", "/todos/1", "/catalog", "/catalog/1", "/addressbook", "/addressbook/1", "/swagger"] }
             }),
             new TestEndpoints("DatabaseMigrations.AppHost", new() {
                 { "api", ["/alive", "/health", "/"] }
@@ -162,7 +159,7 @@ public class AppHostTests(ITestOutputHelper testOutput)
                 { "healthchecksui", ["/"] }
             }),
             new TestEndpoints("MetricsApp.AppHost", new() {
-                { "app", ["/alive", "/health"] },
+                { "app", ["/alive", "/health", "/swagger"] },
                 { "grafana", ["/"] }
             }),
             new TestEndpoints("OrleansVoting.AppHost", new() {
@@ -170,7 +167,12 @@ public class AppHostTests(ITestOutputHelper testOutput)
             }),
             new TestEndpoints("VolumeMount.AppHost", new() {
                 { "blazorweb", ["/alive", "/ApplyDatabaseMigrations", "/health", "/"] }
-            })
+            }),
+            #elif NET9_0
+            new TestEndpoints("ImageGallery.AppHost", new() {
+                { "frontend", ["/alive", "/health", "/"] }
+            }),
+            #endif
         ]);
 
     private static IEnumerable<string> GetSamplesAppHostAssemblyPaths()

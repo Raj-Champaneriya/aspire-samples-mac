@@ -7,10 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.StackExchange.Redis" Version="8.2.0" />
-    <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="8.2.0" />
-    <PackageReference Include="Microsoft.Orleans.Persistence.Redis" Version="8.2.0"/>
-    <PackageReference Include="Microsoft.Orleans.Server" Version="8.2.0"/>
+    <PackageReference Include="Aspire.StackExchange.Redis" Version="9.3.0" />
+
+    <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="9.1.2" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Redis" Version="9.1.2" />
+    <PackageReference Include="Microsoft.Orleans.Server" Version="9.1.2" />
   </ItemGroup>
 
   <ItemGroup>
